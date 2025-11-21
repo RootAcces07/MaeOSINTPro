@@ -36,7 +36,7 @@ def banner():
 ;   | |`-'     ;  :   .'   \   :    |   \   \ .'    `--'---'  ;   |.' '   : |          '---'     |   | :     ---'      `----'   
 |   ;/         |  ,     .-./\   \  /     `---`                '---'   ;   |.'                    `---'.|                        
 '---'           `--`---'     `----'                                   '---'                        `---`                  
-                  {Color.MAGENTA}MaeSINT PRO v3.0{Color.RESET}
+                  {Color.MAGENTA}MaeOSINT PRO v3.0{Color.RESET}
 """
     for c in logo:
         print(c, end="", flush=True)
@@ -184,7 +184,7 @@ def scan_username(username, selected_categories=None):
         all_results[category] = results
 
     # Export JSON uniquement
-    filename_json = f"{username}_MaeSINT.json"
+    filename_json = f"{username}_OSINT.json"
     with open(filename_json, "w", encoding="utf-8") as f:
         json.dump(all_results, f, ensure_ascii=False, indent=4)
 

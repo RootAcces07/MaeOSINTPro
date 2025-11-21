@@ -14,7 +14,7 @@ git clone https://github.com/RootAcces07/MaeOSINTPro.git
 cd MaeOSINTPro
 ```
 ```
-python MaeOSINTPro.py
+python MaeOSINT.py
 ```
 
 

@@ -1,0 +1,247 @@
+import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
+import sys
+import json
+import time
+
+# ================================
+# COULEURS TERMINAL
+# ================================
+class Color:
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    CYAN = "\033[96m"
+    MAGENTA = "\033[95m"
+    RESET = "\033[0m"
+
+# ================================
+# LOGO ANIMÉ
+# ================================
+def banner():
+    logo = f"""{Color.CYAN}
+          ____                           ,----..                               ,--.      ,/   .`|,-.----.                       
+        ,'  , `.                        /   /   \   .--.--.      ,---,       ,--.'|    ,`   .'  :\    /  \                      
+     ,-+-,.' _ |                       /   .     : /  /    '. ,`--.' |   ,--,:  : |  ;    ;     /|   :    \                     
+  ,-+-. ;   , ||                      .   /   ;.  \  :  /`. / |   :  :,`--.'`|  ' :.'___,/    ,' |   |  .\ :  __  ,-.   ,---.   
+ ,--.'|'   |  ;|                     .   ;   /  ` ;  |  |--`  :   |  '|   :  :  | ||    :     |  .   :  |: |,' ,'/ /|  '   ,'\  
+|   |  ,', |  ':  ,--.--.     ,---.  ;   |  ; \ ; |  :  ;_    |   :  |:   |   \ | :;    |.';  ;  |   |   \ :'  | |' | /   /   | 
+|   | /  | |  || /       \   /     \ |   :  | ; | '\  \    `. '   '  ;|   : '  '; |`----'  |  |  |   : .   /|  |   ,'.   ; ,. : 
+'   | :  | :  |,.--.  .-. | /    /  |.   |  ' ' ' : `----.   \|   |  |'   ' ;.    ;    '   :  ;  ;   | |`-' '  :  /  '   | |: : 
+;   . |  ; |--'  \__\/: . ..    ' / |'   ;  \; /  | __ \  \  |'   :  ;|   | | \   |    |   |  '  |   | ;    |  | '   '   | .; : 
+|   : |  | ,     ," .--.; |'   ;   /| \   \  ',  / /  /`--'  /|   |  ''   : |  ; .'    '   :  |  :   ' |    ;  : |   |   :    | 
+|   : '  |/     /  /  ,.  |'   |  / |  ;   :    / '--'.     / '   :  ||   | '`--'      ;   |.'   :   : :    |  , ;    \   \  /  
+;   | |`-'     ;  :   .'   \   :    |   \   \ .'    `--'---'  ;   |.' '   : |          '---'     |   | :     ---'      `----'   
+|   ;/         |  ,     .-./\   \  /     `---`                '---'   ;   |.'                    `---'.|                        
+'---'           `--`---'     `----'                                   '---'                        `---`                  
+                  {Color.MAGENTA}MaeSINT PRO v3.0{Color.RESET}
+"""
+    for c in logo:
+        print(c, end="", flush=True)
+        time.sleep(0.002)
+    print("\n")
+
+# ================================
+# HEADERS WEB
+# ================================
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "Accept": "*/*"
+}
+
+# ================================
+# SITES PAR CATÉGORIES
+# ================================
+CATEGORIES = {
+    "Réseaux Sociaux": [
+        {'name': 'Twitter', 'url': 'https://twitter.com/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Facebook', 'url': 'https://www.facebook.com/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Instagram', 'url': 'https://www.instagram.com/{}/', 'method': 'status_code', 'match': 200},
+        {'name': 'TikTok', 'url': 'https://www.tiktok.com/@{}', 'method': 'status_code', 'match': 200},
+        {'name': 'YouTube', 'url': 'https://www.youtube.com/@{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Reddit', 'url': 'https://www.reddit.com/user/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'LinkedIn', 'url': 'https://www.linkedin.com/in/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Snapchat', 'url': 'https://www.snapchat.com/add/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Pinterest', 'url': 'https://pinterest.com/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Tumblr', 'url': 'https://{}.tumblr.com', 'method': 'status_code', 'match': 200},
+        {'name': 'VK', 'url': 'https://vk.com/{}', 'method': 'status_code', 'match': 200},
+    ],
+
+    "Tech / Développement": [
+        {'name': 'GitHub', 'url': 'https://api.github.com/users/{}', 'method': 'content', 'match': '"login"'},
+        {'name': 'GitLab', 'url': 'https://gitlab.com/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'StackOverflow', 'url': 'https://stackoverflow.com/users/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'HackerNews', 'url': 'https://news.ycombinator.com/user?id={}', 'method': 'content', 'match': 'created'},
+        {'name': 'DockerHub', 'url': 'https://hub.docker.com/u/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'PyPi', 'url': 'https://pypi.org/user/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'npmJS', 'url': 'https://www.npmjs.com/~{}', 'method': 'status_code', 'match': 200},
+        {'name': 'RubyGems', 'url': 'https://rubygems.org/profiles/{}', 'method': 'status_code', 'match': 200},
+    ],
+
+    "Gaming / Streaming": [
+        {'name': 'Twitch', 'url': 'https://www.twitch.tv/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Steam', 'url': 'https://steamcommunity.com/id/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Xbox', 'url': 'https://xboxgamertag.com/search/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'PlayStation', 'url': 'https://psnprofiles.com/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'EpicGames', 'url': 'https://www.epicgames.com/id/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Roblox', 'url': 'https://www.roblox.com/user.aspx?username={}', 'method': 'content', 'match': 'isError":false'},
+    ],
+
+    "Musique / Artistes": [
+        {'name': 'Spotify', 'url': 'https://open.spotify.com/user/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'SoundCloud', 'url': 'https://soundcloud.com/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Bandcamp', 'url': 'https://{}.bandcamp.com', 'method': 'status_code', 'match': 200},
+        {'name': 'Deezer', 'url': 'https://www.deezer.com/profile/{}', 'method': 'status_code', 'match': 200},
+    ],
+
+    "Photo / Création": [
+        {'name': 'Flickr', 'url': 'https://www.flickr.com/people/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Imgur', 'url': 'https://imgur.com/user/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'DeviantArt', 'url': 'https://www.deviantart.com/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Behance', 'url': 'https://www.behance.net/{}', 'method': 'status_code', 'match': 200},
+    ],
+
+    "Blogging / Écriture": [
+        {'name': 'Medium', 'url': 'https://medium.com/@{}', 'method': 'status_code', 'match': 200},
+        {'name': 'WordPress', 'url': 'https://{}.wordpress.com', 'method': 'status_code', 'match': 200},
+        {'name': 'Blogger', 'url': 'https://{}.blogspot.com', 'method': 'status_code', 'match': 200},
+        {'name': 'Substack', 'url': 'https://{}.substack.com', 'method': 'status_code', 'match': 200},
+    ],
+
+    "Shopping / Business": [
+        {'name': 'Etsy', 'url': 'https://www.etsy.com/people/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'eBay', 'url': 'https://www.ebay.com/usr/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Amazon', 'url': 'https://www.amazon.com/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Alibaba', 'url': 'https://www.alibaba.com/member/{}.html', 'method': 'status_code', 'match': 200},
+    ],
+
+    "Communautés": [
+        {'name': 'Disqus', 'url': 'https://disqus.com/by/{}/', 'method': 'status_code', 'match': 200},
+        {'name': 'Goodreads', 'url': 'https://www.goodreads.com/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Fandom', 'url': 'https://www.fandom.com/user/{}', 'method': 'status_code', 'match': 200},
+        {'name': '9GAG', 'url': 'https://9gag.com/u/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Kickstarter', 'url': 'https://www.kickstarter.com/profile/{}', 'method': 'status_code', 'match': 200},
+    ],
+
+    "Adult 🔞": [
+        {'name': 'Pornhub', 'url': 'https://www.pornhub.com/users/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'XVideos', 'url': 'https://www.xvideos.com/profiles/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'OnlyFans', 'url': 'https://onlyfans.com/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'Brazzers', 'url': 'https://www.brazzers.com/model/{}', 'method': 'status_code', 'match': 200},
+        {'name': 'XHamster', 'url': 'https://xhamster.com/users/{}', 'method': 'status_code', 'match': 200},
+    ]
+}
+
+# ================================
+# FONCTION CHECK SITE
+# ================================
+def check_site(site, username):
+    url = site['url'].format(username)
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=8)
+        if site["method"] == "status_code":
+            if resp.status_code == site["match"]:
+                return True, url
+        elif site["method"] == "content":
+            if site["match"] in resp.text:
+                return True, url
+        return False, url
+    except:
+        return False, url
+
+# ================================
+# SCAN MULTITHREAD
+# ================================
+def scan_category(username, category_name, sites):
+    print(f"\n{Color.YELLOW}🔍 Scan catégorie: {category_name}{Color.RESET}\n")
+    results = []
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(check_site, s, username): s for s in sites}
+        for future in as_completed(futures):
+            site = futures[future]
+            found, url = future.result()
+            if found:
+                print(f"{Color.GREEN}[✔] {site['name']} trouvé → {url}{Color.RESET}")
+                results.append({"site": site['name'], "url": url})
+            else:
+                print(f"{Color.RED}[✖] {site['name']} absent{Color.RESET}")
+
+    print(Color.MAGENTA + "="*50 + Color.RESET)
+    return results
+
+# ================================
+# SCAN GLOBAL
+# ================================
+def scan_username(username, selected_categories=None):
+    all_results = {}
+    categories_to_scan = selected_categories if selected_categories else CATEGORIES.keys()
+
+    for category in categories_to_scan:
+        results = scan_category(username, category, CATEGORIES[category])
+        all_results[category] = results
+
+    # Export JSON uniquement
+    filename_json = f"{username}_MaeSINT.json"
+    with open(filename_json, "w", encoding="utf-8") as f:
+        json.dump(all_results, f, ensure_ascii=False, indent=4)
+
+    print(f"{Color.CYAN}\n✅ Résultats exportés: {filename_json}{Color.RESET}")
+    return all_results
+
+# ================================
+# MENU TERMINAL
+# ================================
+def main():
+    os.system("cls" if os.name == "nt" else "clear")
+    banner()
+
+    while True:
+        print(f"""
+{Color.BLUE}1.{Color.RESET} {Color.GREEN} Scanner un nom d'utilisateur
+{Color.BLUE}2.{Color.RESET} {Color.MAGENTA} Scanner par catégorie
+{Color.BLUE}3.{Color.RESET} {Color.RED} Quitter
+""")
+        choice = input(f"{Color.CYAN}MaeSINT PRO > {Color.RESET}")
+
+        if choice == "1":
+            username = input(f"{Color.YELLOW}Nom d'utilisateur : {Color.RESET}")
+            scan_username(username)
+            input(f"\n{Color.CYAN}Appuie sur ENTER pour revenir au menu...{Color.RESET}")
+            os.system("cls" if os.name == "nt" else "clear")
+            banner()
+
+        elif choice == "2":
+            print(f"\n{Color.YELLOW}Catégories disponibles:{Color.RESET}")
+            for i, cat in enumerate(CATEGORIES.keys(), start=1):
+                print(f"{Color.BLUE}{i}.{Color.RESET} {cat}")
+
+            selected = input(f"{Color.CYAN}Sélectionne catégories (ex: 1,3,5) : {Color.RESET}")
+            try:
+                indices = [int(x.strip())-1 for x in selected.split(",")]
+                cats = [list(CATEGORIES.keys())[i] for i in indices if 0 <= i < len(CATEGORIES)]
+                username = input(f"{Color.YELLOW}Nom d'utilisateur : {Color.RESET}")
+                scan_username(username, selected_categories=cats)
+                input(f"\n{Color.CYAN}Appuie sur ENTER pour revenir au menu...{Color.RESET}")
+                os.system("cls" if os.name == "nt" else "clear")
+                banner()
+            except:
+                print(f"{Color.RED}Sélection invalide.{Color.RESET}")
+
+        elif choice == "3":
+            print(f"{Color.RED}Fermeture...{Color.RESET}")
+            sys.exit()
+        else:
+            print(f"{Color.RED}Option invalide.{Color.RESET}")
+
+# ================================
+# LANCEMENT
+# ================================
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n" + Color.RED + "Interruption utilisateur." + Color.RESET)
+        sys.exit()

@@ -5,7 +5,10 @@ MaeOSINT est un scanner OSINT polyvalent : analyse WHOIS, DNS, ports, réseaux s
 
 ```bash
 git clone https://github.com/RootAcces07/MaeOSINTPro.git
-``
+```
+```
 cd MaeOSINTPro
-``
+```
+```
 python MaeOSINTPro.py
+```
